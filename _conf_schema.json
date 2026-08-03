@@ -1,10 +1,4 @@
 {
-    "command": {
-        "description": "触发命令",
-        "type": "string",
-        "default": "图图",
-        "hint": "修改后热重载插件生效"
-    },
     "max_count": {
         "description": "单次最多发送图片数量",
         "type": "int",
@@ -35,17 +29,5 @@
         "type": "string",
         "default": "{\"User-Agent\": \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\", \"Accept\": \"application/json\"}",
         "hint": "输入 JSON 对象，如 {\"User-Agent\": \"...\"}"
-    },
-    "api_url_pc": {
-        "description": "横图 API 地址",
-        "type": "string",
-        "default": "https://api.yppp.net/pc.php?return=json",
-        "hint": "返回横屏壁纸"
-    },
-    "api_url_pe": {
-        "description": "竖图 API 地址",
-        "type": "string",
-        "default": "https://api.yppp.net/pe.php?return=json",
-        "hint": "返回竖屏壁纸"
     }
 }
