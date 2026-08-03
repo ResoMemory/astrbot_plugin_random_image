@@ -23,14 +23,11 @@
         "default": 10,
         "hint": "网络慢时可适当调大"
     },
-    "headers": {
-        "description": "请求头配置",
-        "type": "object",
-        "default": {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-            "Accept": "application/json"
-        },
-        "hint": "可自定义 User-Agent、Accept 等请求头"
+    "headers_json": {
+        "description": "请求头（JSON 格式字符串）",
+        "type": "string",
+        "default": "{\"User-Agent\": \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\", \"Accept\": \"application/json\"}",
+        "hint": "输入 JSON 对象，如 {\"User-Agent\": \"...\"}"
     },
     "api_url_pc": {
         "description": "横图 API 地址",
