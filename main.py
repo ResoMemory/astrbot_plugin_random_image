@@ -1,10 +1,11 @@
 import aiohttp
 import random
 import asyncio
+import uuid
 from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api.star import Context, Star
 from astrbot.api import logger
-from astrbot.api.message_components import Image, Plain, Node
+from astrbot.api.message_components import Image, Plain, Forward, Node
 
 
 class YpppImagePlugin(Star):
@@ -46,7 +47,7 @@ class YpppImagePlugin(Star):
                 count = 1
 
         if count == 1:
-            # ----- 单张模式 -----
+            # ----- 单张模式（不合并） -----
             yield event.plain_result("正在获取图片...")
             try:
                 async with aiohttp.ClientSession() as session:
@@ -59,7 +60,7 @@ class YpppImagePlugin(Star):
                 logger.error(f"获取单张图片失败: {e}")
                 yield event.plain_result(f"获取图片失败: {str(e)}")
         else:
-            # ----- 多张模式（合并转发） -----
+            # ----- 多张模式（合并转发为一条） -----
             yield event.plain_result(f"正在获取 {count} 张图片，请稍候...")
 
             # 并发获取所有图片 URL
@@ -79,28 +80,33 @@ class YpppImagePlugin(Star):
                 return
 
             # 获取机器人自身信息
-            # 1. uin: 从 message_obj.self_id 获取
             bot_uin = event.message_obj.self_id if hasattr(event.message_obj, 'self_id') else 123456
-            # 2. name: 尝试从 event 获取 self_name，否则用默认值
-            bot_name = getattr(event, 'self_name', None)
-            if not bot_name:
-                # 也可以通过 context 获取机器人昵称，但最简单是设置默认值
-                bot_name = "Bot"
+            bot_name = getattr(event, 'self_name', None) or "Bot"
 
-            # 构建 Node 列表
+            # 构建 Node 列表（每个 Node 代表一条子消息）
             nodes = []
-            for url in urls:
+            for idx, url in enumerate(urls, start=1):
                 node = Node(
                     uin=bot_uin,
                     name=bot_name,
                     content=[
+                        Plain(f"图片 {idx}"),
                         Image.fromURL(url)
                     ]
                 )
                 nodes.append(node)
 
-            # 发送合并转发消息（直接传入 nodes 列表）
-            yield event.chain_result(nodes)
+            # 封装为 Forward 组件（合并转发）
+            forward = Forward(
+                id=str(uuid.uuid4()),
+                nodes=nodes
+            )
+
+            # 发送一条合并转发消息
+            yield event.chain_result([
+                Plain(f"共 {len(urls)} 张图片："),
+                forward
+            ])
 
     async def terminate(self):
         logger.info("YpppImagePlugin 已卸载")
