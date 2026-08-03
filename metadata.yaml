@@ -3,7 +3,7 @@ display_name: 随机二次元图
 version: 1.0.0
 desc: 从 yppp.net 获取随机二次元图片
 author: YHJM
-repo: https://github.com/YHJM/astrbot_plugin_random_image
+repo: https://github.com/ResoMemory/astrbot_plugin_random_image.git
 support_platforms:
   - qq_official
   - aiocqhttp
