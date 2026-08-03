@@ -12,13 +12,10 @@ class RandomImagePlugin(Star):
     def __init__(self, context: Context, config: dict = None):
         super().__init__(context)
         self.config = config or {}
-        self.command = self.config.get("command", "图图")
         self.max_count = self.config.get("max_count", 15)
         self.default_count = self.config.get("default_count", 1)
         self.timeout = self.config.get("api_timeout", 10)
         self.orientation = self.config.get("orientation", "random")
-        self.api_url_pc = self.config.get("api_url_pc", "https://api.yppp.net/pc.php?return=json")
-        self.api_url_pe = self.config.get("api_url_pe", "https://api.yppp.net/pe.php?return=json")
 
         try:
             headers_str = self.config.get("headers_json", "{}")
@@ -32,11 +29,11 @@ class RandomImagePlugin(Star):
 
     async def _fetch_image_url(self, session: aiohttp.ClientSession) -> str:
         if self.orientation == "pc":
-            api_url = self.api_url_pc
+            api_url = "https://api.yppp.net/pc.php?return=json"
         elif self.orientation == "pe":
-            api_url = self.api_url_pe
-        else:  # random
-            api_url = self.api_url_pc if random.random() < 0.5 else self.api_url_pe
+            api_url = "https://api.yppp.net/pe.php?return=json"
+        else:
+            api_url = "https://api.yppp.net/pc.php?return=json" if random.random() < 0.5 else "https://api.yppp.net/pe.php?return=json"
 
         timeout = aiohttp.ClientTimeout(total=self.timeout)
         async with session.get(api_url, headers=self.headers, timeout=timeout) as resp:
@@ -50,9 +47,9 @@ class RandomImagePlugin(Star):
                 raise Exception("未获取到图片链接")
             return img_url
 
-    @filter.command("图图")
+    @filter.command("图图")  # ← 修改此处可更换命令名
     async def tu_tu(self, event: AstrMessageEvent, params: str = ""):
-        logger.info(f"触发 /{self.command} 指令，参数: {params}")
+        logger.info(f"触发 /图图 指令，参数: {params}")
 
         count = self.default_count
         if params and params.strip().isdigit():
