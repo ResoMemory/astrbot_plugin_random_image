@@ -1,6 +1,7 @@
 import aiohttp
 import random
 import asyncio
+import json
 from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api.star import Context, Star
 from astrbot.api import logger
@@ -10,21 +11,26 @@ from astrbot.api.message_components import Image, Plain
 class RandomImagePlugin(Star):
     def __init__(self, context: Context, config: dict = None):
         super().__init__(context)
-        # 从配置文件读取参数（WebUI 中修改后自动生效）
         self.config = config or {}
         self.command = self.config.get("command", "图图")
         self.max_count = self.config.get("max_count", 15)
         self.default_count = self.config.get("default_count", 1)
         self.timeout = self.config.get("api_timeout", 10)
-        self.headers = self.config.get("headers", {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-            "Accept": "application/json"
-        })
         self.api_url_pc = self.config.get("api_url_pc", "https://api.yppp.net/pc.php?return=json")
         self.api_url_pe = self.config.get("api_url_pe", "https://api.yppp.net/pe.php?return=json")
 
+        # 解析 headers_json
+        try:
+            headers_str = self.config.get("headers_json", "{}")
+            self.headers = json.loads(headers_str)
+        except json.JSONDecodeError:
+            self.headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                "Accept": "application/json"
+            }
+            logger.warning("headers_json 解析失败，使用默认请求头")
+
     async def _fetch_image_url(self, session: aiohttp.ClientSession) -> str:
-        """获取单张图片的 URL（横竖随机）"""
         if random.random() < 0.5:
             api_url = self.api_url_pc
         else:
@@ -44,10 +50,8 @@ class RandomImagePlugin(Star):
 
     @filter.command("图图")
     async def tu_tu(self, event: AstrMessageEvent, params: str = ""):
-        """发送随机二次元图片，支持数量参数"""
         logger.info(f"触发 /{self.command} 指令，参数: {params}")
 
-        # 解析数量参数
         count = self.default_count
         if params and params.strip().isdigit():
             count = int(params.strip())
@@ -58,7 +62,6 @@ class RandomImagePlugin(Star):
                 count = 1
 
         if count == 1:
-            # ----- 单张模式 -----
             yield event.plain_result("正在获取图片...")
             try:
                 async with aiohttp.ClientSession() as session:
@@ -71,10 +74,8 @@ class RandomImagePlugin(Star):
                 logger.error(f"获取单张图片失败: {e}")
                 yield event.plain_result(f"获取图片失败: {str(e)}")
         else:
-            # ----- 多张模式（消息链） -----
             yield event.plain_result(f"正在获取 {count} 张图片，请稍候...")
 
-            # 并发获取所有图片 URL
             urls = []
             async with aiohttp.ClientSession() as session:
                 tasks = [self._fetch_image_url(session) for _ in range(count)]
@@ -90,10 +91,7 @@ class RandomImagePlugin(Star):
                 yield event.plain_result("所有图片获取失败，请稍后重试")
                 return
 
-            # 构建消息链：文字说明 + 所有图片
-            chain = [
-                Plain(f"共 {len(urls)} 张图片：")
-            ]
+            chain = [Plain(f"共 {len(urls)} 张图片：")]
             for url in urls:
                 chain.append(Image.fromURL(url))
 
