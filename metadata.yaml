@@ -1,0 +1,9 @@
+name: astrbot_plugin_yppp_image
+display_name: YPPP 随机图
+version: 1.0.0
+desc: 从 yppp.net 获取随机二次元图片
+author: YHJM
+repo: https://github.com/YHJM/astrbot_plugin_yppp_image
+support_platforms:
+  - qq_official
+  - aiocqhttp
