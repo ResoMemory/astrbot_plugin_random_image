@@ -1,27 +1,35 @@
-# AstrBot 随机二次元图片插件
+# 随机二次元图片插件 - README
+从 yppp.net 获取随机二次元图片，支持多张发送、方向偏好选择。
 
-从 yppp.net 获取随机二次元图片，支持多张图片一次性发送。
+## 【功能】
+- 发送随机二次元图片（横图/竖图/随机）
+- 支持数量参数，上限 15 张
+- 多张图片合并为一条消息发送
+- 本地缓存 URL，减少 API 调用
+- 分批发送，内存友好
 
-## ✨ 功能特点
+## 【安装】
+将插件放入 `AstrBot/data/plugins/` 目录，在 WebUI 中重载插件。
 
-- 🖼️ 获取随机二次元图片（横图/竖图随机）
-- 🔢 支持数量参数，一次性发送多张图片
-- 📨 多张图片合并为一条消息发送（消息链方式）
-- ⚡ 并发请求，快速获取多张图片
-- 🛡️ 自动限流保护，最多 15 张
+## 【使用】
+示例：
+- `/图图`      发送 1 张
+- `/图图 3`    发送 3 张
 
-## 📥 安装
+## 【配置】
+在 WebUI 插件配置中调整：
+| 参数名         | 说明             | 默认值 |
+| -------------- | ---------------- | ------ |
+| max_count      | 单次最大数量     | 15     |
+| default_count  | 默认数量         | 1      |
+| orientation    | 方向偏好         | random |
+| api_timeout    | 请求超时（秒）   | 10     |
+| headers_json   | 自定义请求头     | User-Agent, Accept |
 
-### 方式一：通过 AstrBot WebUI 安装（推荐）
+方向可选值：`random`（随机）/ `pc`（横屏）/ `pe`（竖屏）
 
-1. 在 AstrBot 管理面板中进入「插件管理」
-2. 点击「插件市场」
-3. 搜索 `random_image` 或 `二次元图片`
-4. 点击安装
+## 【数据源】
+yppp.net (https://api.yppp.net/)
 
-### 方式二：手动安装
-
-1. 克隆本仓库到 `AstrBot/data/plugins/` 目录：
-   ```bash
-   cd AstrBot/data/plugins/
-   git clone https://github.com/你的用户名/astrbot_plugin_random_image.git
+## 【依赖】
+aiohttp >= 3.8.0
