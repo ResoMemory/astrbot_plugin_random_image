@@ -1,0 +1,47 @@
+{
+    "command": {
+        "description": "触发命令",
+        "type": "string",
+        "default": "图图",
+        "hint": "修改后需重启 AstrBot 生效"
+    },
+    "max_count": {
+        "description": "单次最多发送图片数量",
+        "type": "int",
+        "default": 15,
+        "hint": "建议不超过 20，防止消息过长"
+    },
+    "default_count": {
+        "description": "默认发送图片数量",
+        "type": "int",
+        "default": 1,
+        "hint": "不填数量时发送的张数"
+    },
+    "api_timeout": {
+        "description": "API 请求超时时间（秒）",
+        "type": "int",
+        "default": 10,
+        "hint": "网络慢时可适当调大"
+    },
+    "headers": {
+        "description": "请求头配置",
+        "type": "object",
+        "default": {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Accept": "application/json"
+        },
+        "hint": "可自定义 User-Agent、Accept 等请求头"
+    },
+    "api_url_pc": {
+        "description": "横图 API 地址",
+        "type": "string",
+        "default": "https://api.yppp.net/pc.php?return=json",
+        "hint": "返回横屏壁纸"
+    },
+    "api_url_pe": {
+        "description": "竖图 API 地址",
+        "type": "string",
+        "default": "https://api.yppp.net/pe.php?return=json",
+        "hint": "返回竖屏壁纸"
+    }
+}
