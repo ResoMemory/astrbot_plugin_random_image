@@ -16,10 +16,10 @@ class RandomImagePlugin(Star):
         self.max_count = self.config.get("max_count", 15)
         self.default_count = self.config.get("default_count", 1)
         self.timeout = self.config.get("api_timeout", 10)
+        self.orientation = self.config.get("orientation", "random")
         self.api_url_pc = self.config.get("api_url_pc", "https://api.yppp.net/pc.php?return=json")
         self.api_url_pe = self.config.get("api_url_pe", "https://api.yppp.net/pe.php?return=json")
 
-        # 解析 headers_json
         try:
             headers_str = self.config.get("headers_json", "{}")
             self.headers = json.loads(headers_str)
@@ -31,10 +31,12 @@ class RandomImagePlugin(Star):
             logger.warning("headers_json 解析失败，使用默认请求头")
 
     async def _fetch_image_url(self, session: aiohttp.ClientSession) -> str:
-        if random.random() < 0.5:
+        if self.orientation == "pc":
             api_url = self.api_url_pc
-        else:
+        elif self.orientation == "pe":
             api_url = self.api_url_pe
+        else:  # random
+            api_url = self.api_url_pc if random.random() < 0.5 else self.api_url_pe
 
         timeout = aiohttp.ClientTimeout(total=self.timeout)
         async with session.get(api_url, headers=self.headers, timeout=timeout) as resp:
