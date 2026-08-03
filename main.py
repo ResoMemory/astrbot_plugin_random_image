@@ -8,18 +8,30 @@ from astrbot.api.message_components import Image, Plain
 
 
 class RandomImagePlugin(Star):
-    def __init__(self, context: Context):
+    def __init__(self, context: Context, config: dict = None):
         super().__init__(context)
+        # 从配置文件读取参数（WebUI 中修改后自动生效）
+        self.config = config or {}
+        self.command = self.config.get("command", "图图")
+        self.max_count = self.config.get("max_count", 15)
+        self.default_count = self.config.get("default_count", 1)
+        self.timeout = self.config.get("api_timeout", 10)
+        self.headers = self.config.get("headers", {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Accept": "application/json"
+        })
+        self.api_url_pc = self.config.get("api_url_pc", "https://api.yppp.net/pc.php?return=json")
+        self.api_url_pe = self.config.get("api_url_pe", "https://api.yppp.net/pe.php?return=json")
 
     async def _fetch_image_url(self, session: aiohttp.ClientSession) -> str:
         """获取单张图片的 URL（横竖随机）"""
         if random.random() < 0.5:
-            api_url = "https://api.yppp.net/pc.php?return=json"
+            api_url = self.api_url_pc
         else:
-            api_url = "https://api.yppp.net/pe.php?return=json"
+            api_url = self.api_url_pe
 
-        timeout = aiohttp.ClientTimeout(total=10)
-        async with session.get(api_url, timeout=timeout) as resp:
+        timeout = aiohttp.ClientTimeout(total=self.timeout)
+        async with session.get(api_url, headers=self.headers, timeout=timeout) as resp:
             if resp.status != 200:
                 raise Exception(f"API 状态码 {resp.status}")
             data = await resp.json()
@@ -33,15 +45,15 @@ class RandomImagePlugin(Star):
     @filter.command("图图")
     async def tu_tu(self, event: AstrMessageEvent, params: str = ""):
         """发送随机二次元图片，支持数量参数"""
-        logger.info(f"触发 /图图 指令，参数: {params}")
+        logger.info(f"触发 /{self.command} 指令，参数: {params}")
 
         # 解析数量参数
-        count = 1
+        count = self.default_count
         if params and params.strip().isdigit():
             count = int(params.strip())
-            if count > 15:
-                count = 15
-                yield event.plain_result("最多支持15张图片，将发送15张")
+            if count > self.max_count:
+                count = self.max_count
+                yield event.plain_result(f"最多支持{self.max_count}张图片，将发送{self.max_count}张")
             elif count < 1:
                 count = 1
 
@@ -85,7 +97,6 @@ class RandomImagePlugin(Star):
             for url in urls:
                 chain.append(Image.fromURL(url))
 
-            # 尝试发送消息链（一条消息包含所有图片）
             yield event.chain_result(chain)
 
     async def terminate(self):
