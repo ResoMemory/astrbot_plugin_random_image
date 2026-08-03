@@ -1,56 +1,107 @@
 import aiohttp
 import random
+import asyncio
+import time
 from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api.star import Context, Star
 from astrbot.api import logger
-from astrbot.api.message_components import Image, Plain
+from astrbot.api.message_components import Image, Plain, Forward, ForwardNode
 
 
 class YpppImagePlugin(Star):
     def __init__(self, context: Context):
         super().__init__(context)
 
-    @filter.command("随机图")
-    async def random_image(self, event: AstrMessageEvent):
-        """获取一张随机二次元图片"""
-        logger.info("触发 /随机图 指令")
-        await event.plain_result("正在获取图片，请稍候...")
+    async def _fetch_image_url(self, session: aiohttp.ClientSession) -> str:
+        """获取单张图片的 URL（不下载图片）"""
+        # 随机选择横图或竖图
+        if random.random() < 0.5:
+            api_url = "https://api.yppp.net/pc.php?return=json"
+        else:
+            api_url = "https://api.yppp.net/pe.php?return=json"
 
-        try:
-            # 随机选择横图或竖图接口
-            if random.random() < 0.5:
-                api_url = "https://api.yppp.net/pc.php?return=json"
-            else:
-                api_url = "https://api.yppp.net/pe.php?return=json"
+        timeout = aiohttp.ClientTimeout(total=10)
+        async with session.get(api_url, timeout=timeout) as resp:
+            if resp.status != 200:
+                raise Exception(f"API 状态码 {resp.status}")
+            data = await resp.json()
+            if data.get("code") != "200":
+                raise Exception(f"API 返回错误: {data.get('code')}")
+            img_url = data.get("acgurl")
+            if not img_url:
+                raise Exception("未获取到图片链接")
+            return img_url
 
-            timeout = aiohttp.ClientTimeout(total=10)
+    @filter.command("图图")
+    async def tu_tu(self, event: AstrMessageEvent, params: str = ""):
+        """发送随机二次元图片，支持数量参数"""
+        logger.info(f"触发 /图图 指令，参数: {params}")
+
+        # 解析数量参数
+        count = 1
+        if params and params.strip().isdigit():
+            count = int(params.strip())
+            if count > 15:
+                count = 15
+                yield event.plain_result("最多支持15张图片，将发送15张")
+            elif count < 1:
+                count = 1
+
+        if count == 1:
+            # ----- 单张模式（不合并） -----
+            yield event.plain_result("正在获取图片...")
+            try:
+                async with aiohttp.ClientSession() as session:
+                    img_url = await self._fetch_image_url(session)
+                yield event.chain_result([
+                    Plain("✨ 你的二次元图片来啦！"),
+                    Image.fromURL(img_url)
+                ])
+            except Exception as e:
+                logger.error(f"获取单张图片失败: {e}")
+                yield event.plain_result(f"获取图片失败: {str(e)}")
+        else:
+            # ----- 多张模式（合并转发） -----
+            yield event.plain_result(f"正在获取 {count} 张图片，请稍候...")
+
+            # 并发获取所有图片 URL
+            urls = []
             async with aiohttp.ClientSession() as session:
-                async with session.get(api_url, timeout=timeout) as resp:
-                    if resp.status != 200:
-                        await event.plain_result(f"获取图片失败，状态码: {resp.status}")
-                        return
+                tasks = [self._fetch_image_url(session) for _ in range(count)]
+                results = await asyncio.gather(*tasks, return_exceptions=True)
+                for idx, result in enumerate(results):
+                    if isinstance(result, Exception):
+                        logger.error(f"获取第 {idx+1} 张图片失败: {result}")
+                    else:
+                        if result:
+                            urls.append(result)
 
-                    data = await resp.json()
-                    if data.get("code") != "200":
-                        await event.plain_result(f"API返回错误: {data.get('code')}")
-                        return
+            if not urls:
+                yield event.plain_result("所有图片获取失败，请稍后重试")
+                return
 
-                    img_url = data.get("acgurl")
-                    if not img_url:
-                        await event.plain_result("未获取到图片链接")
-                        return
+            # 构建合并转发节点
+            self_id = event.self_id if hasattr(event, 'self_id') else "123456"
+            self_name = event.self_name if hasattr(event, 'self_name') else "Bot"
 
-                    # 发送图片
-                    yield event.chain_result([
-                        Plain("✨ 你的二次元图片来啦！"),
-                        Image.fromURL(img_url)
-                    ])
+            nodes = []
+            for i, url in enumerate(urls):
+                node = ForwardNode(
+                    sender_id=self_id,
+                    sender_name=self_name,
+                    message_chain=[
+                        Plain(f"图片 {i+1}"),
+                        Image.fromURL(url)
+                    ],
+                    time=int(time.time())
+                )
+                nodes.append(node)
 
-        except asyncio.TimeoutError:
-            await event.plain_result("请求超时，请稍后重试")
-        except Exception as e:
-            logger.error(f"获取图片失败: {e}")
-            await event.plain_result(f"获取图片失败: {str(e)}")
+            # 发送合并转发消息
+            yield event.chain_result([
+                Plain(f"共 {len(urls)} 张图片："),
+                Forward(nodes)
+            ])
 
     async def terminate(self):
         """插件卸载时调用"""
