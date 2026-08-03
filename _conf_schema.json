@@ -3,19 +3,26 @@
         "description": "触发命令",
         "type": "string",
         "default": "图图",
-        "hint": "修改后需重启 AstrBot 生效"
+        "hint": "修改后热重载插件生效"
     },
     "max_count": {
         "description": "单次最多发送图片数量",
         "type": "int",
         "default": 15,
-        "hint": "建议不超过 20，防止消息过长"
+        "hint": "建议不超过 20"
     },
     "default_count": {
         "description": "默认发送图片数量",
         "type": "int",
         "default": 1,
         "hint": "不填数量时发送的张数"
+    },
+    "orientation": {
+        "description": "图片方向偏好",
+        "type": "string",
+        "default": "random",
+        "enum": ["random", "pc", "pe"],
+        "hint": "random=随机, pc=横屏, pe=竖屏"
     },
     "api_timeout": {
         "description": "API 请求超时时间（秒）",
