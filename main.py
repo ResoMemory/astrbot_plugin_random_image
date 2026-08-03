@@ -2,6 +2,7 @@ import aiohttp
 import random
 import asyncio
 import time
+import uuid
 from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api.star import Context, Star
 from astrbot.api import logger
@@ -80,7 +81,6 @@ class YpppImagePlugin(Star):
                 return
 
             # 获取机器人自身信息（从 event 中获取）
-            # 有些版本 event 有 self_id / self_name，若没有则使用默认值
             self_id = getattr(event, 'self_id', '123456')
             self_name = getattr(event, 'self_name', 'Bot')
 
@@ -97,11 +97,8 @@ class YpppImagePlugin(Star):
                     "time": int(time.time())
                 })
 
-            # 发送合并转发消息
-            yield event.chain_result([
-                Plain(f"共 {len(urls)} 张图片："),
-                Forward(nodes=nodes)
-            ])
+            # 使用 event.forward_result() 发送合并转发
+            yield event.forward_result(nodes)
 
     async def terminate(self):
         logger.info("YpppImagePlugin 已卸载")
