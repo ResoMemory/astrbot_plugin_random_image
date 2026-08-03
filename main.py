@@ -1,11 +1,10 @@
 import aiohttp
 import random
 import asyncio
-import uuid
 from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api.star import Context, Star
 from astrbot.api import logger
-from astrbot.api.message_components import Image, Plain, Forward, Node
+from astrbot.api.message_components import Image, Plain, Node
 
 
 class YpppImagePlugin(Star):
@@ -33,7 +32,7 @@ class YpppImagePlugin(Star):
 
     @filter.command("图图")
     async def tu_tu(self, event: AstrMessageEvent, params: str = ""):
-        """发送随机二次元图片，支持数量参数"""
+        """发送随机二次元图片，支持数量参数（合并转发）"""
         logger.info(f"触发 /图图 指令，参数: {params}")
 
         # 解析数量参数
@@ -60,7 +59,7 @@ class YpppImagePlugin(Star):
                 logger.error(f"获取单张图片失败: {e}")
                 yield event.plain_result(f"获取图片失败: {str(e)}")
         else:
-            # ----- 多张模式（合并转发为一条） -----
+            # ----- 多张模式（合并转发） -----
             yield event.plain_result(f"正在获取 {count} 张图片，请稍候...")
 
             # 并发获取所有图片 URL
@@ -96,17 +95,8 @@ class YpppImagePlugin(Star):
                 )
                 nodes.append(node)
 
-            # 封装为 Forward 组件（合并转发）
-            forward = Forward(
-                id=str(uuid.uuid4()),
-                nodes=nodes
-            )
-
-            # 发送一条合并转发消息
-            yield event.chain_result([
-                Plain(f"共 {len(urls)} 张图片："),
-                forward
-            ])
+            # 发送合并转发消息（通过 chain_result 传入 nodes 列表）
+            yield event.chain_result(nodes)
 
     async def terminate(self):
         logger.info("YpppImagePlugin 已卸载")
