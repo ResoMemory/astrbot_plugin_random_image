@@ -4,7 +4,7 @@ import asyncio
 from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api.star import Context, Star
 from astrbot.api import logger
-from astrbot.api.message_components import Image, Plain, Node
+from astrbot.api.message_components import Image, Plain
 
 
 class YpppImagePlugin(Star):
@@ -32,7 +32,7 @@ class YpppImagePlugin(Star):
 
     @filter.command("图图")
     async def tu_tu(self, event: AstrMessageEvent, params: str = ""):
-        """发送随机二次元图片，支持数量参数（合并转发）"""
+        """发送随机二次元图片，支持数量参数（合并到一条消息链）"""
         logger.info(f"触发 /图图 指令，参数: {params}")
 
         # 解析数量参数
@@ -45,58 +45,34 @@ class YpppImagePlugin(Star):
             elif count < 1:
                 count = 1
 
-        if count == 1:
-            # ----- 单张模式（不合并） -----
-            yield event.plain_result("正在获取图片...")
-            try:
-                async with aiohttp.ClientSession() as session:
-                    img_url = await self._fetch_image_url(session)
-                yield event.chain_result([
-                    Plain("✨ 你的二次元图片来啦！"),
-                    Image.fromURL(img_url)
-                ])
-            except Exception as e:
-                logger.error(f"获取单张图片失败: {e}")
-                yield event.plain_result(f"获取图片失败: {str(e)}")
-        else:
-            # ----- 多张模式（合并转发） -----
-            yield event.plain_result(f"正在获取 {count} 张图片，请稍候...")
+        # 先提示正在获取
+        yield event.plain_result(f"正在获取 {count} 张图片...")
 
-            # 并发获取所有图片 URL
-            urls = []
-            async with aiohttp.ClientSession() as session:
-                tasks = [self._fetch_image_url(session) for _ in range(count)]
-                results = await asyncio.gather(*tasks, return_exceptions=True)
-                for idx, result in enumerate(results):
-                    if isinstance(result, Exception):
-                        logger.error(f"获取第 {idx+1} 张图片失败: {result}")
-                    else:
-                        if result:
-                            urls.append(result)
+        # 并发获取所有图片 URL
+        urls = []
+        async with aiohttp.ClientSession() as session:
+            tasks = [self._fetch_image_url(session) for _ in range(count)]
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            for idx, result in enumerate(results):
+                if isinstance(result, Exception):
+                    logger.error(f"获取第 {idx+1} 张图片失败: {result}")
+                else:
+                    if result:
+                        urls.append(result)
 
-            if not urls:
-                yield event.plain_result("所有图片获取失败，请稍后重试")
-                return
+        if not urls:
+            yield event.plain_result("所有图片获取失败，请稍后重试")
+            return
 
-            # 获取机器人自身信息
-            bot_uin = event.message_obj.self_id if hasattr(event.message_obj, 'self_id') else 123456
-            bot_name = getattr(event, 'self_name', None) or "Bot"
+        # 构建消息链：文字 + 多张图片（按顺序）
+        chain = [
+            Plain(f"共 {len(urls)} 张图片：")
+        ]
+        for url in urls:
+            chain.append(Image.fromURL(url))
 
-            # 构建 Node 列表（每个 Node 代表一条子消息）
-            nodes = []
-            for idx, url in enumerate(urls, start=1):
-                node = Node(
-                    uin=bot_uin,
-                    name=bot_name,
-                    content=[
-                        Plain(f"图片 {idx}"),
-                        Image.fromURL(url)
-                    ]
-                )
-                nodes.append(node)
-
-            # 发送合并转发消息（通过 chain_result 传入 nodes 列表）
-            yield event.chain_result(nodes)
+        # 发送一条消息链（AstrBot会尝试作为一条消息发送）
+        yield event.chain_result(chain)
 
     async def terminate(self):
         logger.info("YpppImagePlugin 已卸载")
